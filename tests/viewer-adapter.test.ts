@@ -5,6 +5,8 @@ import {
   filterGraph,
   focusedNodeIds,
   initialFilters,
+  nodeLabelLines,
+  nodeVisual,
   safeSourceUrl,
 } from '../src/viewer/graph-adapter.js';
 
@@ -86,6 +88,44 @@ function fixture(): Graph {
 }
 
 describe('viewer graph adapter', () => {
+  it('keeps type colors when an entire path is focused, using an outline for state', () => {
+    const [entity, property] = fixture().nodes;
+    expect(nodeVisual(entity, { focused: true })).toMatchObject({
+      color: '#15736c',
+      outline: '#184dd3',
+      value: 4,
+    });
+    expect(nodeVisual(property, { focused: true })).toMatchObject({
+      color: '#3577be',
+      outline: '#184dd3',
+      value: 1,
+    });
+    expect(nodeVisual(entity, { added: true })).toMatchObject({
+      color: '#15736c',
+      outline: '#bf7822',
+    });
+    expect(nodeVisual(entity, { added: true, selected: true }).outline).toBe('#184dd3');
+    expect(nodeVisual(entity, {}).outline).toBeUndefined();
+  });
+
+  it('wraps long canvas labels without shortening the saved field path', () => {
+    const node = fixture().nodes[1];
+    node.label = 'data.VerticalMeasurement.WellboreTVDTrajectoryID';
+    expect(nodeLabelLines(node)).toEqual(['Wellbore TVD', 'Trajectory ID']);
+    expect(node.label).toBe('data.VerticalMeasurement.WellboreTVDTrajectoryID');
+    expect(nodeLabelLines({ ...node, type: 'entity', label: 'WellboreMarkerSet' })).toEqual([
+      'Wellbore Marker Set',
+    ]);
+    expect(
+      nodeLabelLines({ ...node, type: 'fragment', label: 'AbstractFacilityVerticalMeasurement' }),
+    ).toEqual(['Abstract Facility', 'Vertical Measurement']);
+    expect(nodeLabelLines({ ...node, label: 'data.' })).toEqual(['data.']);
+    expect(nodeLabelLines({ ...node, label: 'X'.repeat(50) }).join('')).toBe('X'.repeat(50));
+    expect(
+      nodeLabelLines({ ...node, label: 'X'.repeat(50) }).every((line) => line.length <= 20),
+    ).toBe(true);
+  });
+
   it('isolates force positions, endpoint objects and nested data from canonical facts', () => {
     const graph = fixture();
     const before = JSON.stringify(graph);

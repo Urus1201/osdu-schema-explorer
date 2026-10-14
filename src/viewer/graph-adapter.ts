@@ -151,6 +151,45 @@ export const edgeColors: Record<EdgeType, string> = {
   documented_association: '#bd7625',
 };
 
+export function nodeVisual(
+  node: GraphNode,
+  state: { selected?: boolean; focused?: boolean; added?: boolean },
+) {
+  return {
+    color: nodeColors[node.type],
+    value: node.type === 'entity' ? 4 : node.type === 'property' ? 1 : 2,
+    outline: state.selected
+      ? '#184dd3'
+      : state.added
+        ? '#bf7822'
+        : state.focused
+          ? '#184dd3'
+          : undefined,
+  };
+}
+
+/** Canvas captions only; the inspector and list retain exact schema names and paths. */
+export function nodeLabelLines(node: GraphNode): string[] {
+  const name = node.type === 'property' ? node.label.split('.').at(-1) || node.label : node.label;
+  const words = name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
+    .split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    for (const part of word.match(/.{1,20}/gu) ?? []) {
+      if (line && line.length + part.length + 1 > 20) {
+        lines.push(line);
+        line = '';
+      }
+      line = line ? `${line} ${part}` : part;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [node.label];
+}
+
 export function safeSourceUrl(location: string): string | undefined {
   try {
     const url = new URL(location);

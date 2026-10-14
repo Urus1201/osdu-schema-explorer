@@ -18,7 +18,7 @@ import { useGraph } from './use-graph.js';
 export function App() {
   const { graph, focus, status, error, retry, clearFocus } = useGraph();
   const [filters, setFilters] = useState<ViewFilters>(initialFilters);
-  const [mode, setMode] = useState<'3d' | '2d' | 'list'>('3d');
+  const [mode, setMode] = useState<'3d' | '2d' | 'list'>('2d');
   const [scope, setScope] = useState<'all' | 'focused'>('all');
   const [selection, setSelection] = useState<Selection>(null);
   const [labels, setLabels] = useState(true);
@@ -187,7 +187,7 @@ export function App() {
           </div>
           <div className="view-controls">
             <div className="segmented" role="group" aria-label="Graph view">
-              {(['3d', '2d', 'list'] as const).map((viewMode) => (
+              {(['2d', '3d', 'list'] as const).map((viewMode) => (
                 <button
                   key={viewMode}
                   aria-pressed={mode === viewMode}
@@ -307,12 +307,12 @@ export function App() {
               <p>Dashed 2D line: documentation evidence</p>
               <p>Curved 3D line: documented association</p>
               <p>
-                <i style={{ background: '#184dd3' }} />
-                Focused / reused
+                <i style={{ border: '2px solid #184dd3' }} />
+                Blue outline / line: focused or selected
               </p>
               <p>
-                <i style={{ background: '#bf7822' }} />
-                Latest additions
+                <i style={{ border: '2px solid #bf7822' }} />
+                Amber outline / line: latest additions
               </p>
               <p>List view also identifies these states in text.</p>
             </div>
