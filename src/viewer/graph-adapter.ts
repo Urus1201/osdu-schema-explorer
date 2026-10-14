@@ -1,0 +1,161 @@
+import type {
+  EvidenceCategory,
+  FocusMessage,
+  Graph,
+  GraphEdge,
+  GraphNode,
+  EdgeType,
+  NodeType,
+} from '../core/model.js';
+
+export interface ViewFilters {
+  search: string;
+  domain: string;
+  nodeType: NodeType | 'all';
+  evidence: EvidenceCategory | 'all';
+  edgeType: EdgeType | 'all';
+  detail: 'compact' | 'expanded';
+}
+
+export const initialFilters: ViewFilters = {
+  search: '',
+  domain: 'all',
+  nodeType: 'all',
+  evidence: 'all',
+  edgeType: 'all',
+  detail: 'expanded',
+};
+
+export type RendererNode = GraphNode & {
+  x?: number;
+  y?: number;
+  z?: number;
+  vx?: number;
+  vy?: number;
+  vz?: number;
+};
+export type RendererLink = Omit<GraphEdge, 'source' | 'target'> & {
+  source: string | RendererNode;
+  target: string | RendererNode;
+};
+export interface RendererGraph {
+  nodes: RendererNode[];
+  links: RendererLink[];
+}
+
+export function focusedNodeIds(data: RendererGraph, focus: FocusMessage): Set<string> {
+  const ids = new Set(focus.nodeIds);
+  const edges = new Set(focus.edgeIds);
+  for (const edge of data.links) {
+    if (edges.has(edge.id)) {
+      ids.add(typeof edge.source === 'string' ? edge.source : edge.source.id);
+      ids.add(typeof edge.target === 'string' ? edge.target : edge.target.id);
+    }
+  }
+  return ids;
+}
+
+/** Only this disposable copy is given to force renderers. */
+export function createRendererGraph(graph: Graph, previous?: RendererGraph): RendererGraph {
+  const positions = new Map(previous?.nodes.map((node) => [node.id, node]));
+  const nodes: RendererNode[] = structuredClone(graph.nodes);
+  for (const node of nodes) {
+    const prior = positions.get(node.id);
+    if (prior) {
+      for (const coordinate of ['x', 'y', 'z', 'vx', 'vy', 'vz'] as const) {
+        if (Number.isFinite(prior[coordinate])) node[coordinate] = prior[coordinate];
+      }
+    }
+  }
+  return { nodes, links: structuredClone(graph.edges) };
+}
+
+export function filterGraph(graph: Graph, filters: ViewFilters, focus?: FocusMessage): Graph {
+  const search = filters.search.trim().toLocaleLowerCase();
+  const evidence = new Map(graph.evidence.map((item) => [item.id, item.category]));
+  const evidenceEndpoints = new Set<string>();
+  if (filters.evidence !== 'all') {
+    for (const edge of graph.edges) {
+      if (
+        edge.evidenceCategory === filters.evidence &&
+        (filters.edgeType === 'all' || edge.type === filters.edgeType)
+      ) {
+        evidenceEndpoints.add(edge.source);
+        evidenceEndpoints.add(edge.target);
+      }
+    }
+  }
+  const focusedNodes = new Set(focus?.nodeIds);
+  const focusedEdges = new Set(focus?.edgeIds);
+  if (focus) {
+    for (const edge of graph.edges) {
+      if (focusedEdges.has(edge.id)) {
+        focusedNodes.add(edge.source);
+        focusedNodes.add(edge.target);
+      }
+    }
+  }
+  const nodes = graph.nodes.filter((node) => {
+    if (focus && !focusedNodes.has(node.id)) return false;
+    if (filters.domain !== 'all' && node.domain !== filters.domain) return false;
+    if (filters.nodeType !== 'all' && node.type !== filters.nodeType) return false;
+    if (filters.detail === 'compact' && (node.type === 'property' || node.type === 'fragment'))
+      return false;
+    if (
+      filters.evidence !== 'all' &&
+      !evidenceEndpoints.has(node.id) &&
+      !node.evidenceIds.some((id) => evidence.get(id) === filters.evidence)
+    )
+      return false;
+    return (
+      !search ||
+      [node.label, node.kind, node.description, node.propertyPath].some((value) =>
+        value?.toLocaleLowerCase().includes(search),
+      )
+    );
+  });
+  const visible = new Set(nodes.map((node) => node.id));
+  const edges = graph.edges.filter(
+    (edge) =>
+      visible.has(edge.source) &&
+      visible.has(edge.target) &&
+      (!focus || focusedEdges.has(edge.id)) &&
+      (filters.evidence === 'all' || edge.evidenceCategory === filters.evidence) &&
+      (filters.edgeType === 'all' || edge.type === filters.edgeType),
+  );
+  return { ...graph, nodes, edges };
+}
+
+export const nodeNames: Record<NodeType, string> = {
+  entity: 'Entity',
+  property: 'Property',
+  fragment: 'Fragment',
+  reference_data: 'Reference data',
+};
+export const relationNames: Record<EdgeType, string> = {
+  references_record: 'Record reference',
+  contains_property: 'Contains property',
+  composes_schema: 'Schema composition',
+  documented_association: 'Documented association',
+};
+export const nodeColors: Record<NodeType, string> = {
+  entity: '#15736c',
+  property: '#3577be',
+  fragment: '#8562b4',
+  reference_data: '#ce8628',
+};
+export const edgeColors: Record<EdgeType, string> = {
+  references_record: '#3b728c',
+  contains_property: '#748292',
+  composes_schema: '#8562b4',
+  documented_association: '#bd7625',
+};
+
+export function safeSourceUrl(location: string): string | undefined {
+  try {
+    const url = new URL(location);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
