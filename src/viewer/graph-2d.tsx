@@ -18,7 +18,6 @@ export default function Graph2D({
   width,
   height,
   labels,
-  fitRequest,
   selection,
   focus,
   onSelect,
@@ -45,7 +44,7 @@ export default function Graph2D({
   }, [data]);
   useEffect(() => {
     if (settled.current) fit();
-  }, [fitRequest, width, height]);
+  }, [width, height]);
   useEffect(() => {
     const ids = focusedNodeIds(data, focus);
     if (settled.current && ids.size)
@@ -160,9 +159,10 @@ export default function Graph2D({
         onLinkHover={(edge) => setHoveredEdge(edge?.id ?? null)}
         onBackgroundClick={() => onSelect(null)}
       />
-      <div className="canvas-controls" role="group" aria-label="Canvas navigation">
+      <div className="segmented canvas-controls" role="group" aria-label="Canvas navigation">
         <button
           aria-label="Zoom in"
+          title="Zoom in"
           onClick={() =>
             renderer.current?.zoom((renderer.current?.zoom() ?? 1) * 1.35, reducedMotion())
           }
@@ -171,13 +171,14 @@ export default function Graph2D({
         </button>
         <button
           aria-label="Zoom out"
+          title="Zoom out"
           onClick={() =>
             renderer.current?.zoom((renderer.current?.zoom() ?? 1) / 1.35, reducedMotion())
           }
         >
           <ZoomIcon out />
         </button>
-        <button aria-label="Fit graph to view" onClick={fit}>
+        <button aria-label="Fit view" title="Fit view" onClick={fit}>
           <FitIcon />
         </button>
       </div>

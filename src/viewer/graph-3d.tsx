@@ -22,7 +22,6 @@ export default function Graph3D({
   width,
   height,
   labels,
-  fitRequest,
   selection,
   focus,
   onSelect,
@@ -106,7 +105,7 @@ export default function Graph3D({
   }, [data]);
   useEffect(() => {
     if (settled.current) navigation.fit();
-  }, [fitRequest, width, height]);
+  }, [width, height]);
   useEffect(() => {
     const ids = focusedNodeIds(data, focus);
     if (settled.current && ids.size) navigation.fit(ids);

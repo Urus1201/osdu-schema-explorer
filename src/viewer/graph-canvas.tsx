@@ -12,7 +12,6 @@ export interface SceneProps {
   width: number;
   height: number;
   labels: boolean;
-  fitRequest: number;
   focus: FocusMessage;
   selection: Selection;
   onSelect: (selection: Selection) => void;

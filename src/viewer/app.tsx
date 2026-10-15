@@ -11,7 +11,7 @@ import {
   relationNames,
   type ViewFilters,
 } from './graph-adapter.js';
-import { FitIcon, GraphIcon, SearchIcon } from './icons.js';
+import { GraphIcon, SearchIcon } from './icons.js';
 import { Inspector } from './inspector.js';
 import { useGraph } from './use-graph.js';
 
@@ -22,7 +22,6 @@ export function App() {
   const [scope, setScope] = useState<'all' | 'focused'>('all');
   const [selection, setSelection] = useState<Selection>(null);
   const [labels, setLabels] = useState(true);
-  const [fitRequest, setFitRequest] = useState(0);
   const search = useDeferredValue(filters.search);
   const view = useMemo(
     () => filterGraph(graph, { ...filters, search }, scope === 'focused' ? focus : undefined),
@@ -247,14 +246,6 @@ export function App() {
                 </button>
               ))}
             </div>
-            <button
-              className="fit-button"
-              onClick={() => setFitRequest((value) => value + 1)}
-              disabled={!view.nodes.length || mode === 'list'}
-            >
-              <FitIcon />
-              Fit view
-            </button>
           </div>
         </div>
         {error ? (
@@ -305,7 +296,6 @@ export function App() {
               mode={mode}
               onList={() => setMode('list')}
               labels={labels}
-              fitRequest={fitRequest}
               selection={selection}
               focus={focus}
               onSelect={select}

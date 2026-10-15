@@ -340,18 +340,6 @@ a {
   min-width: 46px;
   padding-inline: 13px;
 }
-.fit-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 12px;
-  padding: 9px 11px;
-  background: transparent;
-}
-.fit-button > svg {
-  width: 18px;
-  height: 18px;
-}
 .graph-region {
   flex: 1;
   position: relative;
@@ -853,21 +841,15 @@ code {
   position: absolute;
   bottom: 16px;
   left: 18px;
-  display: flex;
   background: #fff;
-  border: 1px solid #d4dce7;
-  border-radius: 4px;
 }
 .canvas-controls button {
-  border: 0;
-  border-radius: 0;
+  display: grid;
+  place-items: center;
   width: 36px;
   height: 36px;
   padding: 8px;
   color: #526889;
-}
-.canvas-controls button + button {
-  border-left: 1px solid #d4dce7;
 }
 .canvas-controls svg {
   width: 20px;
