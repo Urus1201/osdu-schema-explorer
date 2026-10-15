@@ -108,7 +108,7 @@ export function GraphCanvas({
       )}
       <p className="canvas-hint">
         {mode === '3d'
-          ? 'Drag to rotate · Scroll to zoom · Hover for properties · Click to inspect'
+          ? 'Left-drag to orbit · Right-drag to pan · Scroll to zoom · Controls for shortcuts'
           : size.width < 600
             ? 'Drag to pan · Zoom to explore · Tap nodes for field details'
             : 'Drag to pan · Scroll to zoom · Hover for properties · Click to inspect'}
