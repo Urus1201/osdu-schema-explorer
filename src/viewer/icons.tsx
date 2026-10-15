@@ -35,3 +35,12 @@ export function FitIcon() {
     </svg>
   );
 }
+
+export function ZoomIcon({ out = false }: { out?: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 10h12" stroke="currentColor" strokeWidth="1.5" />
+      {!out ? <path d="M10 4v12" stroke="currentColor" strokeWidth="1.5" /> : null}
+    </svg>
+  );
+}

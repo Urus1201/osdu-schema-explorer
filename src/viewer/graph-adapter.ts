@@ -2,11 +2,12 @@ import type {
   EvidenceCategory,
   FocusMessage,
   Graph,
-  GraphEdge,
   GraphNode,
   EdgeType,
   NodeType,
 } from '../core/model.js';
+import { entityOverview, matchesFocus, type ViewEdge, type ViewGraph } from './graph-overview.js';
+import type { Selection } from './graph-canvas.js';
 
 export interface ViewFilters {
   search: string;
@@ -23,7 +24,7 @@ export const initialFilters: ViewFilters = {
   nodeType: 'all',
   evidence: 'all',
   edgeType: 'all',
-  detail: 'expanded',
+  detail: 'compact',
 };
 
 export type RendererNode = GraphNode & {
@@ -34,9 +35,10 @@ export type RendererNode = GraphNode & {
   vy?: number;
   vz?: number;
 };
-export type RendererLink = Omit<GraphEdge, 'source' | 'target'> & {
+export type RendererLink = Omit<ViewEdge, 'source' | 'target'> & {
   source: string | RendererNode;
   target: string | RendererNode;
+  curvature?: number;
 };
 export interface RendererGraph {
   nodes: RendererNode[];
@@ -47,16 +49,60 @@ export function focusedNodeIds(data: RendererGraph, focus: FocusMessage): Set<st
   const ids = new Set(focus.nodeIds);
   const edges = new Set(focus.edgeIds);
   for (const edge of data.links) {
-    if (edges.has(edge.id)) {
-      ids.add(typeof edge.source === 'string' ? edge.source : edge.source.id);
-      ids.add(typeof edge.target === 'string' ? edge.target : edge.target.id);
+    if (matchesFocus(edge, edges, ids)) {
+      ids.add(endpointId(edge.source));
+      ids.add(endpointId(edge.target));
     }
   }
   return ids;
 }
 
+export function endpointId(endpoint: string | RendererNode): string {
+  return typeof endpoint === 'string' ? endpoint : endpoint.id;
+}
+
+export function selectionNeighborhood(data: RendererGraph, selection: Selection) {
+  const nodes = new Set<string>();
+  const edges = new Set<string>();
+  if (selection?.type === 'node' && data.nodes.some((node) => node.id === selection.id)) {
+    nodes.add(selection.id);
+  }
+  for (const edge of data.links) {
+    const source = endpointId(edge.source);
+    const target = endpointId(edge.target);
+    if (
+      (selection?.type === 'edge' && selection.id === edge.id) ||
+      (selection?.type === 'node' && (selection.id === source || selection.id === target))
+    ) {
+      nodes.add(source);
+      nodes.add(target);
+      edges.add(edge.id);
+    }
+  }
+  return { nodes, edges };
+}
+
+export function rendererHighlights(data: RendererGraph, focus: FocusMessage) {
+  const focusNodes = new Set(focus.nodeIds);
+  const focusEdges = new Set(focus.edgeIds);
+  const addedNodes = new Set(focus.addedNodeIds);
+  const additions = new Set(focus.addedEdgeIds);
+  return {
+    focusedNodes: focusedNodeIds(data, focus),
+    focusedEdges: new Set(
+      data.links
+        .filter((edge) => matchesFocus(edge, focusEdges, focusNodes))
+        .map((edge) => edge.id),
+    ),
+    addedNodes,
+    addedEdges: new Set(
+      data.links.filter((edge) => matchesFocus(edge, additions, addedNodes)).map((edge) => edge.id),
+    ),
+  };
+}
+
 /** Only this disposable copy is given to force renderers. */
-export function createRendererGraph(graph: Graph, previous?: RendererGraph): RendererGraph {
+export function createRendererGraph(graph: ViewGraph, previous?: RendererGraph): RendererGraph {
   const positions = new Map(previous?.nodes.map((node) => [node.id, node]));
   const nodes: RendererNode[] = structuredClone(graph.nodes);
   for (const node of nodes) {
@@ -67,15 +113,37 @@ export function createRendererGraph(graph: Graph, previous?: RendererGraph): Ren
       }
     }
   }
-  return { nodes, links: structuredClone(graph.edges) };
+  const links: RendererLink[] = structuredClone(graph.edges);
+  const parallel = new Map<string, RendererLink[]>();
+  for (const edge of links) {
+    const key = JSON.stringify([endpointId(edge.source), endpointId(edge.target)].sort());
+    const group = parallel.get(key) ?? [];
+    group.push(edge);
+    parallel.set(key, group);
+  }
+  for (const group of parallel.values()) {
+    group.sort((a, b) => a.id.localeCompare(b.id, 'en'));
+    group.forEach((edge, index) => {
+      const source = endpointId(edge.source);
+      const target = endpointId(edge.target);
+      edge.curvature =
+        source === target
+          ? 0.4 + index * 0.15
+          : (index - (group.length - 1) / 2) *
+            Math.min(0.22, 1 / group.length) *
+            (source < target ? 1 : -1);
+    });
+  }
+  return { nodes, links };
 }
 
-export function filterGraph(graph: Graph, filters: ViewFilters, focus?: FocusMessage): Graph {
+export function filterGraph(graph: Graph, filters: ViewFilters, focus?: FocusMessage): ViewGraph {
+  const display = filters.detail === 'compact' ? entityOverview(graph) : graph;
   const search = filters.search.trim().toLocaleLowerCase();
   const evidence = new Map(graph.evidence.map((item) => [item.id, item.category]));
   const evidenceEndpoints = new Set<string>();
   if (filters.evidence !== 'all') {
-    for (const edge of graph.edges) {
+    for (const edge of display.edges) {
       if (
         edge.evidenceCategory === filters.evidence &&
         (filters.edgeType === 'all' || edge.type === filters.edgeType)
@@ -88,19 +156,33 @@ export function filterGraph(graph: Graph, filters: ViewFilters, focus?: FocusMes
   const focusedNodes = new Set(focus?.nodeIds);
   const focusedEdges = new Set(focus?.edgeIds);
   if (focus) {
-    for (const edge of graph.edges) {
-      if (focusedEdges.has(edge.id)) {
+    for (const edge of display.edges) {
+      if (matchesFocus(edge, focusedEdges, focusedNodes)) {
+        focusedEdges.add(edge.id);
         focusedNodes.add(edge.source);
         focusedNodes.add(edge.target);
       }
     }
   }
-  const nodes = graph.nodes.filter((node) => {
+  const searchEndpoints = new Set<string>();
+  if (search && filters.detail === 'compact') {
+    const properties = new Map(graph.nodes.map((node) => [node.id, node]));
+    for (const edge of display.edges as ViewEdge[]) {
+      const property = edge.propertyId ? properties.get(edge.propertyId) : undefined;
+      if (
+        [edge.fieldPath, property?.label, property?.propertyPath].some((value) =>
+          value?.toLocaleLowerCase().includes(search),
+        )
+      ) {
+        searchEndpoints.add(edge.source);
+        searchEndpoints.add(edge.target);
+      }
+    }
+  }
+  const nodes = display.nodes.filter((node) => {
     if (focus && !focusedNodes.has(node.id)) return false;
     if (filters.domain !== 'all' && node.domain !== filters.domain) return false;
     if (filters.nodeType !== 'all' && node.type !== filters.nodeType) return false;
-    if (filters.detail === 'compact' && (node.type === 'property' || node.type === 'fragment'))
-      return false;
     if (
       filters.evidence !== 'all' &&
       !evidenceEndpoints.has(node.id) &&
@@ -109,13 +191,14 @@ export function filterGraph(graph: Graph, filters: ViewFilters, focus?: FocusMes
       return false;
     return (
       !search ||
+      searchEndpoints.has(node.id) ||
       [node.label, node.kind, node.description, node.propertyPath].some((value) =>
         value?.toLocaleLowerCase().includes(search),
       )
     );
   });
   const visible = new Set(nodes.map((node) => node.id));
-  const edges = graph.edges.filter(
+  const edges = display.edges.filter(
     (edge) =>
       visible.has(edge.source) &&
       visible.has(edge.target) &&

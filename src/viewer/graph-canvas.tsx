@@ -1,5 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { FocusMessage, Graph } from '../core/model.js';
+import type { FocusMessage } from '../core/model.js';
+import type { ViewGraph } from './graph-overview.js';
 import { createRendererGraph, type RendererGraph } from './graph-adapter.js';
 
 const Graph3D = lazy(() => import('./graph-3d.js'));
@@ -44,7 +45,7 @@ export function GraphCanvas({
   onList,
   ...scene
 }: Omit<SceneProps, 'data' | 'width' | 'height'> & {
-  graph: Graph;
+  graph: ViewGraph;
   mode: '3d' | '2d';
   onList: () => void;
 }) {
@@ -80,7 +81,7 @@ export function GraphCanvas({
       className="graph-canvas"
       ref={container}
       role="region"
-      aria-label={`${mode === '3d' ? '3D' : '2D'} graph of ${graph.nodes.length} saved nodes and ${graph.edges.length} relationships. Use List view for keyboard and screen reader inspection.`}
+      aria-label={`${mode === '3d' ? '3D' : '2D'} graph of ${graph.nodes.length} visible nodes and ${graph.edges.length} relationships. Use List view for keyboard and screen reader inspection.`}
     >
       {contextLost && mode === '3d' ? (
         <div className="canvas-message" role="alert">
@@ -107,10 +108,10 @@ export function GraphCanvas({
       )}
       <p className="canvas-hint">
         {mode === '3d'
-          ? 'Drag to rotate · Scroll to zoom · Hover for field names · Click to inspect'
+          ? 'Drag to rotate · Scroll to zoom · Hover for properties · Click to inspect'
           : size.width < 600
             ? 'Drag to pan · Zoom to explore · Tap nodes for field details'
-            : 'Drag to pan · Scroll to zoom · Click to inspect'}
+            : 'Drag to pan · Scroll to zoom · Hover for properties · Click to inspect'}
       </p>
     </div>
   );

@@ -52,6 +52,50 @@ function fixture(): Graph {
 }
 
 describe('viewer evidence inspector', () => {
+  it('inspects a collapsed reference using its owning entity, exact property and original evidence', () => {
+    const graph = fixture();
+    graph.nodes.push({
+      ...graph.nodes[0],
+      id: 'field',
+      type: 'property',
+      label: 'data.Ref[]',
+      propertyPath: 'data.Ref[]',
+      ownerId: 'Alpha',
+      occurrencePath: '/properties/data/properties/Ref',
+    });
+    graph.edges[0] = {
+      ...graph.edges[0],
+      source: 'field',
+      type: 'references_record',
+      direction: 'forward',
+    };
+    const markup = renderToStaticMarkup(
+      createElement(Inspector, {
+        graph,
+        selection: { type: 'edge', id: 'edge' },
+        onSelect: () => undefined,
+      }),
+    );
+    expect(markup).toContain('Alpha → Beta');
+    expect(markup).toContain('<dt>Property</dt>');
+    expect(markup).toContain('<code>Ref[]</code>');
+    expect(markup).toContain('data.Ref[]');
+    expect(markup).toContain('oneOf[1]');
+    expect(markup).toContain('pinned-revision');
+    expect(markup).toContain('pinned-hash');
+  });
+
+  it('offers keyboard-operable property relationships when an entity is selected', () => {
+    const markup = renderToStaticMarkup(
+      createElement(Inspector, {
+        graph: fixture(),
+        selection: { type: 'node', id: 'Alpha' },
+        onSelect: () => undefined,
+      }),
+    );
+    expect(markup).toContain('aria-label="Inspect Ref[] from Alpha to Beta"');
+  });
+
   it('preserves undirected semantics and distinguishes readable paths, source pointers and selected versions', () => {
     const markup = renderToStaticMarkup(
       createElement(Inspector, {

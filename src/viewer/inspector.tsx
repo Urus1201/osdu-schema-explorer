@@ -1,7 +1,65 @@
-import type { Evidence, Graph } from '../core/model.js';
+import type { Evidence, Graph, GraphEdge, GraphNode } from '../core/model.js';
 import type { Selection } from './graph-canvas.js';
 import { nodeNames, relationNames, safeSourceUrl } from './graph-adapter.js';
 import { DocumentIcon } from './icons.js';
+
+function relationshipSource(graph: Graph, edge: GraphEdge): GraphNode | undefined {
+  const source = graph.nodes.find((node) => node.id === edge.source);
+  return source?.type === 'property'
+    ? (graph.nodes.find((node) => node.id === source.ownerId) ?? source)
+    : source;
+}
+
+function propertyName(edge: GraphEdge): string {
+  return edge.fieldPath.split('.').at(-1) || edge.fieldPath;
+}
+
+function EntityRelationships({
+  graph,
+  node,
+  onSelect,
+}: {
+  graph: Graph;
+  node: GraphNode;
+  onSelect: (selection: Selection) => void;
+}) {
+  const nodes = new Map(graph.nodes.map((item) => [item.id, item]));
+  const relationships = graph.edges.filter(
+    (edge) =>
+      (edge.type === 'references_record' || edge.type === 'documented_association') &&
+      (edge.target === node.id ||
+        edge.source === node.id ||
+        nodes.get(edge.source)?.ownerId === node.id),
+  );
+  if (!relationships.length) return null;
+  return (
+    <section className="entity-relationships" aria-label="Entity relationships">
+      <h4>
+        Relationships <span>{relationships.length}</span>
+      </h4>
+      <ul>
+        {relationships.map((edge) => {
+          const source = relationshipSource(graph, edge);
+          const target = nodes.get(edge.target);
+          return (
+            <li key={edge.id}>
+              <button
+                className="relationship-button"
+                aria-label={`Inspect ${propertyName(edge)} from ${source?.label} to ${target?.label}`}
+                onClick={() => onSelect({ type: 'edge', id: edge.id })}
+              >
+                <code>{propertyName(edge)}</code>
+                <span>
+                  {source?.label} {edge.direction === 'forward' ? '→' : '—'} {target?.label}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 
 function Detail({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -94,12 +152,12 @@ export function Inspector({
   const evidence = item
     ? graph.evidence.filter((entry) => item.evidenceIds.includes(entry.id))
     : [];
-  const source = edge ? graph.nodes.find((item) => item.id === edge.source) : undefined;
+  const source = edge ? relationshipSource(graph, edge) : undefined;
   const target = edge ? graph.nodes.find((item) => item.id === edge.target) : undefined;
   return (
     <aside className="inspector" aria-label="Inspector">
       <div className="panel-heading">
-        <h2>Inspector</h2>
+        <h2>{edge ? 'Relationship' : 'Inspector'}</h2>
         {item ? (
           <button
             className="close-button"
@@ -112,108 +170,143 @@ export function Inspector({
       </div>
       {item ? (
         <div className="inspection-body">
-          <p className="eyebrow">
-            {node ? nodeNames[node.type] : edge ? relationNames[edge.type] : ''}
-          </p>
+          {node ? <p className="eyebrow">{nodeNames[node.type]}</p> : null}
           <h3>
             {node?.label ??
               `${source?.label ?? edge?.source} ${edge?.direction === 'forward' ? '→' : '—'} ${target?.label ?? edge?.target}`}
           </h3>
           {item.description ? <p className="description">{item.description}</p> : null}
-          <dl className="fact-details">
-            <Detail label="Stable ID">
-              <code>{item.id}</code>
-            </Detail>
-            {node ? (
-              <>
-                <Detail label="Kind">
-                  <code>{node.kind}</code>
+          {edge ? (
+            <dl className="relationship-summary">
+              <Detail label="Source">
+                <button
+                  className="text-button"
+                  onClick={() => onSelect({ type: 'node', id: source?.id ?? edge.source })}
+                >
+                  {source?.label ?? edge.source}
+                </button>
+              </Detail>
+              {edge.fieldPath ? (
+                <Detail label="Property">
+                  <code>{propertyName(edge)}</code>
                 </Detail>
-                <Detail label="Selected version">{node.version}</Detail>
-                <Detail label="Domain">{node.domain}</Detail>
-                <Detail label="Namespace">{node.namespace}</Detail>
-                {node.propertyPath ? (
-                  <Detail label="Property path">
-                    <code>{node.propertyPath}</code>
-                  </Detail>
-                ) : null}
-                {node.occurrencePath ? (
-                  <Detail label="Occurrence path">
-                    <code>{node.occurrencePath}</code>
-                  </Detail>
-                ) : null}
-                {node.ownerId ? (
-                  <Detail label="Owning node">
-                    <button
-                      className="text-button"
-                      onClick={() => onSelect({ type: 'node', id: node.ownerId! })}
-                    >
-                      {graph.nodes.find((item) => item.id === node.ownerId)?.label ?? node.ownerId}
-                    </button>
-                  </Detail>
-                ) : null}
-                <Detail label="Schema hash">
-                  <code>{node.schemaHash}</code>
-                </Detail>
-              </>
-            ) : null}
-            {edge ? (
-              <>
-                <Detail label="Relationship">{relationNames[edge.type]}</Detail>
-                <Detail label="Source schema">
-                  <button
-                    className="text-button"
-                    onClick={() => onSelect({ type: 'node', id: edge.source })}
-                  >
-                    {source?.label ?? edge.source}
-                  </button>
-                </Detail>
-                <Detail label="Target schema">
-                  <button
-                    className="text-button"
-                    onClick={() => onSelect({ type: 'node', id: edge.target })}
-                  >
-                    {target?.label ?? edge.target}
-                  </button>
-                </Detail>
-                <Detail label="Direction">
-                  {edge.direction === 'forward' ? 'Source → target' : 'Undirected'}
-                </Detail>
-                <Detail label="Field path">
+              ) : null}
+              <Detail label="Target">
+                <button
+                  className="text-button"
+                  onClick={() => onSelect({ type: 'node', id: edge.target })}
+                >
+                  {target?.label ?? edge.target}
+                </button>
+              </Detail>
+              {edge.fieldPath ? (
+                <Detail label="Property path">
                   <code>{edge.fieldPath}</code>
                 </Detail>
-                <Detail label="Evidence category">{edge.evidenceCategory}</Detail>
-                <Detail label="Branch conditions">
-                  {edge.branch.length
-                    ? edge.branch.map((branch) => (
-                        <code className="branch" key={branch}>
-                          {branch}
-                        </code>
-                      ))
-                    : 'Unconditional'}
-                </Detail>
-                <Detail label="Declared target constraint">
-                  {edge.targetConstraint ?? 'No version constraint declared'}
-                </Detail>
-                <Detail label="Exploration target version">
-                  {target?.version ?? 'Not available'}
-                </Detail>
-                <Detail label="Field requiredness">
-                  {edge.required === undefined
-                    ? 'Not specified'
-                    : edge.required
-                      ? 'Required field'
-                      : 'Optional field'}
-                </Detail>
-                {edge.minItems !== undefined ? (
-                  <Detail label="Minimum array items">{edge.minItems}</Detail>
-                ) : null}
-                {edge.maxItems !== undefined ? (
-                  <Detail label="Maximum array items">{edge.maxItems}</Detail>
-                ) : null}
-              </>
-            ) : null}
-          </dl>
+              ) : null}
+            </dl>
+          ) : null}
+          {node && node.type !== 'property' ? (
+            <EntityRelationships graph={graph} node={node} onSelect={onSelect} />
+          ) : null}
+          <details className="schema-details">
+            <summary>Schema details</summary>
+            <dl className="fact-details">
+              <Detail label="Stable ID">
+                <code>{item.id}</code>
+              </Detail>
+              {node ? (
+                <>
+                  <Detail label="Kind">
+                    <code>{node.kind}</code>
+                  </Detail>
+                  <Detail label="Selected version">{node.version}</Detail>
+                  <Detail label="Domain">{node.domain}</Detail>
+                  <Detail label="Namespace">{node.namespace}</Detail>
+                  {node.propertyPath ? (
+                    <Detail label="Property path">
+                      <code>{node.propertyPath}</code>
+                    </Detail>
+                  ) : null}
+                  {node.occurrencePath ? (
+                    <Detail label="Occurrence path">
+                      <code>{node.occurrencePath}</code>
+                    </Detail>
+                  ) : null}
+                  {node.ownerId ? (
+                    <Detail label="Owning node">
+                      <button
+                        className="text-button"
+                        onClick={() => onSelect({ type: 'node', id: node.ownerId! })}
+                      >
+                        {graph.nodes.find((item) => item.id === node.ownerId)?.label ??
+                          node.ownerId}
+                      </button>
+                    </Detail>
+                  ) : null}
+                  <Detail label="Schema hash">
+                    <code>{node.schemaHash}</code>
+                  </Detail>
+                </>
+              ) : null}
+              {edge ? (
+                <>
+                  <Detail label="Relationship">{relationNames[edge.type]}</Detail>
+                  <Detail label="Source schema">
+                    <button
+                      className="text-button"
+                      onClick={() => onSelect({ type: 'node', id: source?.id ?? edge.source })}
+                    >
+                      {source?.label ?? edge.source}
+                    </button>
+                  </Detail>
+                  <Detail label="Target schema">
+                    <button
+                      className="text-button"
+                      onClick={() => onSelect({ type: 'node', id: edge.target })}
+                    >
+                      {target?.label ?? edge.target}
+                    </button>
+                  </Detail>
+                  <Detail label="Direction">
+                    {edge.direction === 'forward' ? 'Source → target' : 'Undirected'}
+                  </Detail>
+                  <Detail label="Field path">
+                    <code>{edge.fieldPath}</code>
+                  </Detail>
+                  <Detail label="Evidence category">{edge.evidenceCategory}</Detail>
+                  <Detail label="Branch conditions">
+                    {edge.branch.length
+                      ? edge.branch.map((branch) => (
+                          <code className="branch" key={branch}>
+                            {branch}
+                          </code>
+                        ))
+                      : 'Unconditional'}
+                  </Detail>
+                  <Detail label="Declared target constraint">
+                    {edge.targetConstraint ?? 'No version constraint declared'}
+                  </Detail>
+                  <Detail label="Exploration target version">
+                    {target?.version ?? 'Not available'}
+                  </Detail>
+                  <Detail label="Field requiredness">
+                    {edge.required === undefined
+                      ? 'Not specified'
+                      : edge.required
+                        ? 'Required field'
+                        : 'Optional field'}
+                  </Detail>
+                  {edge.minItems !== undefined ? (
+                    <Detail label="Minimum array items">{edge.minItems}</Detail>
+                  ) : null}
+                  {edge.maxItems !== undefined ? (
+                    <Detail label="Maximum array items">{edge.maxItems}</Detail>
+                  ) : null}
+                </>
+              ) : null}
+            </dl>
+          </details>
           {edge?.type === 'references_record' ? (
             <p className="inspection-note">
               The schema defines a reference field. This does not assert a link between business
@@ -231,6 +324,9 @@ export function Inspector({
           {evidence.map((entry) => (
             <EvidenceCard key={entry.id} evidence={entry} />
           ))}
+          {edge ? (
+            <p className="relationship-hint">Select a relationship to inspect its property.</p>
+          ) : null}
         </div>
       ) : (
         <div className="inspector-empty">

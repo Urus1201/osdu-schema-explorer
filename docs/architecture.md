@@ -13,6 +13,12 @@ lookup, additive merging, and atomic persistence. `src/sources` inspects selecte
 JSON Schema scope. `src/cli` is the semantic write interface. `src/server` reads
 validated snapshots and broadcasts changes; focus contains IDs only.
 `src/viewer` receives copies and creates separate mutable force-layout objects.
+Its default entity overview collapses explicit owner → property → target paths
+for display. Each connection retains the saved reference ID, property ID, and
+original path edge IDs; its inspector reads the canonical graph and evidence.
+Shared fragments never create inferred entity connections. Property details
+restores the complete saved structure. Label placement avoids collisions in 2D,
+and property captions appear on hover or selection.
 
 The graph is the only semantic memory. Source checkout/cache content does not
 authorize graph ingestion. A relationship is researched only on request. Reuse

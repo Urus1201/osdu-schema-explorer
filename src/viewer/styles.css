@@ -97,7 +97,7 @@ a {
   min-height: 100dvh;
   height: 100dvh;
   display: grid;
-  grid-template-columns: 258px minmax(360px, 1fr) 305px;
+  grid-template-columns: 240px minmax(360px, 1fr) 320px;
   grid-template-rows: 55px minmax(0, 1fr);
 }
 .app-header {
@@ -279,6 +279,21 @@ a {
   padding: 18px 19px;
   min-height: 74px;
   border-bottom: 1px solid var(--border);
+  background: #fff;
+  flex-wrap: wrap;
+}
+.workspace-heading {
+  display: grid;
+  gap: 12px;
+}
+.workspace-heading h2 {
+  font-size: 18px;
+  letter-spacing: -0.3px;
+}
+.workspace-heading .segmented button {
+  font-size: 11px;
+  min-height: 30px;
+  padding: 7px 11px;
 }
 .segmented {
   display: inline-flex;
@@ -313,7 +328,13 @@ a {
 .view-controls {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.property-toggle {
+  font-size: 12px;
+  color: #34465f;
+  min-height: 32px;
 }
 .view-controls .segmented button {
   min-width: 46px;
@@ -489,13 +510,6 @@ a {
   outline: 3px solid #156fba;
   outline-offset: 3px;
 }
-.detail-control {
-  margin-left: auto;
-}
-.detail-control select {
-  min-height: 34px;
-  font-size: 11px;
-}
 .inspector {
   border-left: 1px solid var(--border);
   min-height: 0;
@@ -533,6 +547,79 @@ a {
 }
 .inspection-body {
   padding: 4px 19px 25px;
+}
+.relationship-summary {
+  margin-top: 24px;
+  padding: 5px 0 25px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.relationship-summary > div {
+  margin-top: 19px;
+}
+.relationship-summary dt {
+  font-size: 12px;
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+.relationship-summary dd,
+.relationship-summary code {
+  font-size: 14px;
+}
+.relationship-summary .text-button {
+  color: #162338;
+  font-weight: 500;
+}
+.relationship-summary code {
+  color: #637188;
+}
+.relationship-summary > div:last-child code {
+  font-size: 12px;
+}
+.schema-details {
+  margin-top: 24px;
+  font-size: 12px;
+}
+.schema-details > summary {
+  color: #43536e;
+  font-weight: 500;
+}
+.schema-details .fact-details {
+  margin-top: 14px;
+}
+.relationship-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 22px;
+}
+.entity-relationships ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.entity-relationships li + li {
+  border-top: 1px solid var(--border);
+}
+.relationship-button {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  padding: 13px 2px;
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+.relationship-button code {
+  font-size: 12px;
+  color: #116b65;
+}
+.relationship-button span {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 .eyebrow {
   color: var(--teal);
@@ -672,13 +759,37 @@ code {
 }
 .canvas-hint {
   position: absolute;
-  bottom: 21px;
-  left: 0;
-  right: 0;
+  bottom: 25px;
+  left: 160px;
+  right: 16px;
   pointer-events: none;
   text-align: center;
   font-size: 10px;
   color: #687991;
+}
+.canvas-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 18px;
+  display: flex;
+  background: #fff;
+  border: 1px solid #d4dce7;
+  border-radius: 4px;
+}
+.canvas-controls button {
+  border: 0;
+  border-radius: 0;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  color: #526889;
+}
+.canvas-controls button + button {
+  border-left: 1px solid #d4dce7;
+}
+.canvas-controls svg {
+  width: 20px;
+  height: 20px;
 }
 .canvas-message {
   text-align: center;
@@ -781,13 +892,6 @@ code {
 }
 .relationship-direction {
   color: #52647a;
-}
-.compact-note {
-  padding: 6px 20px;
-  background: #fff;
-  border-top: 1px solid var(--border);
-  font-size: 10px;
-  color: var(--muted);
 }
 .sr-only {
   position: absolute;
@@ -926,10 +1030,10 @@ code {
     padding: 15px;
     gap: 13px;
   }
-  .workspace-toolbar > .segmented {
+  .workspace-heading {
     width: 100%;
   }
-  .workspace-toolbar > .segmented > button {
+  .workspace-heading .segmented > button {
     flex: 1;
   }
   .view-controls {
@@ -952,8 +1056,18 @@ code {
     padding: 15px;
     gap: 14px;
   }
-  .detail-control {
-    margin-left: 0;
+  .property-toggle {
+    width: 100%;
+  }
+  .canvas-hint {
+    left: 10px;
+    right: 10px;
+    bottom: 62px;
+    font-size: 9px;
+  }
+  .canvas-controls {
+    bottom: 12px;
+    left: 12px;
   }
   .graph-list {
     padding: 16px;

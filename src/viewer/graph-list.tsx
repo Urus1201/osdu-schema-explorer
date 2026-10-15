@@ -1,4 +1,5 @@
-import type { FocusMessage, Graph } from '../core/model.js';
+import type { FocusMessage } from '../core/model.js';
+import { matchesFocus, type ViewGraph } from './graph-overview.js';
 import type { Selection } from './graph-canvas.js';
 import { nodeNames, relationNames } from './graph-adapter.js';
 
@@ -8,7 +9,7 @@ export function GraphList({
   focus,
   onSelect,
 }: {
-  graph: Graph;
+  graph: ViewGraph;
   selection: Selection;
   focus: FocusMessage;
   onSelect: (selection: Selection) => void;
@@ -16,6 +17,14 @@ export function GraphList({
   const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
   const additions = new Set([...(focus.addedNodeIds ?? []), ...(focus.addedEdgeIds ?? [])]);
   const highlighted = new Set([...focus.nodeIds, ...focus.edgeIds]);
+  const focusedEdges = new Set(focus.edgeIds);
+  const focusedNodes = new Set(focus.nodeIds);
+  const addedEdges = new Set(focus.addedEdgeIds);
+  const addedNodes = new Set(focus.addedNodeIds);
+  for (const edge of graph.edges) {
+    if (matchesFocus(edge, focusedEdges, focusedNodes)) highlighted.add(edge.id);
+    if (matchesFocus(edge, addedEdges, addedNodes)) additions.add(edge.id);
+  }
   const state = (id: string) =>
     additions.has(id) ? 'New' : highlighted.has(id) ? 'Reused' : 'Saved';
   return (
@@ -57,7 +66,7 @@ export function GraphList({
       </table>
       <table>
         <caption>
-          Saved relationships <span>{graph.edges.length}</span>
+          Relationships <span>{graph.edges.length}</span>
         </caption>
         <thead>
           <tr>

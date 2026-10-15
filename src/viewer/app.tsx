@@ -35,6 +35,13 @@ export function App() {
   const focusAvailable = focus.nodeIds.length > 0 || focus.edgeIds.length > 0;
   const filter = <K extends keyof ViewFilters>(key: K, value: ViewFilters[K]) =>
     setFilters((current) => ({ ...current, [key]: value }));
+  const select = (next: Selection) => {
+    if (next?.type === 'node') {
+      const node = graph.nodes.find((item) => item.id === next.id);
+      if (node?.type === 'property' || node?.type === 'fragment') filter('detail', 'expanded');
+    }
+    setSelection(next);
+  };
   const filtered =
     filters.search !== '' ||
     filters.domain !== 'all' ||
@@ -115,7 +122,14 @@ export function App() {
               id="node-filter"
               value={filters.nodeType}
               onChange={(event) =>
-                filter('nodeType', event.target.value as ViewFilters['nodeType'])
+                setFilters((current) => ({
+                  ...current,
+                  nodeType: event.target.value as ViewFilters['nodeType'],
+                  detail:
+                    event.target.value === 'property' || event.target.value === 'fragment'
+                      ? 'expanded'
+                      : current.detail,
+                }))
               }
             >
               <option value="all">All node types</option>
@@ -146,7 +160,15 @@ export function App() {
               id="relation-filter"
               value={filters.edgeType}
               onChange={(event) =>
-                filter('edgeType', event.target.value as ViewFilters['edgeType'])
+                setFilters((current) => ({
+                  ...current,
+                  edgeType: event.target.value as ViewFilters['edgeType'],
+                  detail:
+                    event.target.value === 'contains_property' ||
+                    event.target.value === 'composes_schema'
+                      ? 'expanded'
+                      : current.detail,
+                }))
               }
             >
               <option value="all">All relationships</option>
@@ -177,15 +199,43 @@ export function App() {
       </aside>
       <main id="workspace" className="workspace" tabIndex={-1} aria-label="Graph workspace">
         <div className="workspace-toolbar">
-          <div className="segmented" role="group" aria-label="Knowledge scope">
-            <button aria-pressed={scope === 'all'} onClick={() => setScope('all')}>
-              All saved knowledge
-            </button>
-            <button aria-pressed={scope === 'focused'} onClick={() => setScope('focused')}>
-              Focused subgraph
-            </button>
+          <div className="workspace-heading">
+            <h2>Entity relationships</h2>
+            <div className="segmented" role="group" aria-label="Knowledge scope">
+              <button aria-pressed={scope === 'all'} onClick={() => setScope('all')}>
+                All saved knowledge
+              </button>
+              <button aria-pressed={scope === 'focused'} onClick={() => setScope('focused')}>
+                Focused subgraph
+              </button>
+            </div>
           </div>
           <div className="view-controls">
+            <label className="toggle-label property-toggle">
+              <input
+                type="checkbox"
+                checked={filters.detail === 'expanded'}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    detail: event.target.checked ? 'expanded' : 'compact',
+                    nodeType:
+                      !event.target.checked &&
+                      (current.nodeType === 'property' || current.nodeType === 'fragment')
+                        ? 'all'
+                        : current.nodeType,
+                    edgeType:
+                      !event.target.checked &&
+                      (current.edgeType === 'contains_property' ||
+                        current.edgeType === 'composes_schema')
+                        ? 'all'
+                        : current.edgeType,
+                  }))
+                }
+              />
+              <span className="toggle" aria-hidden="true" />
+              Property details
+            </label>
             <div className="segmented" role="group" aria-label="Graph view">
               {(['2d', '3d', 'list'] as const).map((viewMode) => (
                 <button
@@ -248,7 +298,7 @@ export function App() {
               </button>
             </div>
           ) : mode === 'list' ? (
-            <GraphList graph={view} selection={selection} focus={focus} onSelect={setSelection} />
+            <GraphList graph={view} selection={selection} focus={focus} onSelect={select} />
           ) : (
             <GraphCanvas
               graph={view}
@@ -258,7 +308,7 @@ export function App() {
               fitRequest={fitRequest}
               selection={selection}
               focus={focus}
-              onSelect={setSelection}
+              onSelect={select}
             />
           )}
           {focusAvailable ? (
@@ -327,24 +377,9 @@ export function App() {
             <span className="toggle" aria-hidden="true" />
             Show labels
           </label>
-          <label className="detail-control">
-            <span className="sr-only">Level of detail</span>
-            <select
-              value={filters.detail}
-              onChange={(event) => filter('detail', event.target.value as ViewFilters['detail'])}
-            >
-              <option value="expanded">Expanded detail</option>
-              <option value="compact">Compact entities</option>
-            </select>
-          </label>
         </footer>
-        {filters.detail === 'compact' ? (
-          <p className="compact-note">
-            Compact view hides properties and fragments. Expand detail to inspect their saved paths.
-          </p>
-        ) : null}
       </main>
-      <Inspector graph={graph} selection={selection} onSelect={setSelection} />
+      <Inspector graph={graph} selection={selection} onSelect={select} />
       <div className="sr-only" role="status" aria-live="polite">
         Graph revision {graph.revision}. {view.nodes.length} visible nodes and {view.edges.length}{' '}
         relationships.{focusAvailable ? ' A saved path is highlighted.' : ''}
