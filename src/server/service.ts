@@ -3,6 +3,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { extname, relative, resolve, sep } from 'node:path';
 import { GraphStore } from '../core/store';
 import type { FocusMessage, Graph } from '../core/model';
+import { createDescriptionReader } from '../sources/descriptions';
 
 export function validateFocus(value: unknown, graph: Graph): FocusMessage {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
@@ -52,11 +53,16 @@ export interface ServiceOptions {
   port?: number;
   pollMs?: number;
   staticDir?: string;
+  sourceDirectory?: string;
 }
 
 export async function createService(options: ServiceOptions) {
   const { store, staticDir } = options;
-  let graph = await store.init();
+  const describe = options.sourceDirectory
+    ? createDescriptionReader(options.sourceDirectory)
+    : async (graph: Graph) => graph;
+  const readGraph = async () => describe(await store.read());
+  let graph = await describe(await store.init());
   const subscribers = new Set<ServerResponse>();
   let port = options.port ?? 4310;
   const emit = (event: string, payload: unknown) => {
@@ -133,7 +139,7 @@ export async function createService(options: ServiceOptions) {
         json(response, 405, { error: 'Method not allowed' });
         return;
       }
-      const latest = await store.read();
+      const latest = await readGraph();
       update(latest);
       if (path === '/api/graph') {
         json(response, 200, latest);
@@ -161,7 +167,7 @@ export async function createService(options: ServiceOptions) {
         return;
       }
       let focus: FocusMessage;
-      const latest = await store.read();
+      const latest = await readGraph();
       try {
         focus = validateFocus(await body(request), latest);
       } catch {
@@ -224,8 +230,7 @@ export async function createService(options: ServiceOptions) {
     () => {
       if (polling) return;
       polling = true;
-      void store
-        .read()
+      void readGraph()
         .then(update)
         .catch(() => emit('store-error', { error: 'Saved graph unavailable' }))
         .finally(() => {

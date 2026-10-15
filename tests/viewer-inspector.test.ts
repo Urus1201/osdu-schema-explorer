@@ -52,6 +52,46 @@ function fixture(): Graph {
 }
 
 describe('viewer evidence inspector', () => {
+  it('shows a definition immediately below the selected schema name', () => {
+    const graph = fixture();
+    graph.nodes[0].description = 'A synthetic entity <with> a source definition.';
+    const markup = renderToStaticMarkup(
+      createElement(Inspector, {
+        graph,
+        selection: { type: 'node', id: 'Alpha' },
+        onSelect: () => undefined,
+      }),
+    );
+    expect(markup).toContain('aria-label="Definition"');
+    expect(markup).toContain('A synthetic entity &lt;with&gt; a source definition.');
+    expect(markup.indexOf('Definition')).toBeLessThan(markup.indexOf('Entity relationships'));
+  });
+
+  it('explains when a source definition is unavailable', () => {
+    const markup = renderToStaticMarkup(
+      createElement(Inspector, {
+        graph: fixture(),
+        selection: { type: 'node', id: 'Alpha' },
+        onSelect: () => undefined,
+      }),
+    );
+    expect(markup).toContain('No schema definition available for this version.');
+  });
+
+  it('keeps long definitions compact with the full source text in a disclosure', () => {
+    const graph = fixture();
+    graph.nodes[0].description = 'Synthetic source description. '.repeat(30);
+    const markup = renderToStaticMarkup(
+      createElement(Inspector, {
+        graph,
+        selection: { type: 'node', id: 'Alpha' },
+        onSelect: () => undefined,
+      }),
+    );
+    expect(markup).toContain('<summary>Full schema description</summary>');
+    expect(markup).toContain(graph.nodes[0].description.trim());
+  });
+
   it('inspects a collapsed reference using its owning entity, exact property and original evidence', () => {
     const graph = fixture();
     graph.nodes.push({

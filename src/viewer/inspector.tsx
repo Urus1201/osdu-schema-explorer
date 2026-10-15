@@ -70,6 +70,24 @@ function Detail({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
+function Definition({ description }: { description?: string }) {
+  const text = description?.trim();
+  const long = !!text && text.length > 280;
+  const excerpt = long ? `${text.slice(0, 280).replace(/\s+\S*$/, '')}…` : text;
+  return (
+    <section className="entity-definition" aria-label="Definition">
+      <h4>Definition</h4>
+      <p className="description">{excerpt || 'No schema definition available for this version.'}</p>
+      {long ? (
+        <details>
+          <summary>Full schema description</summary>
+          <p className="description">{text}</p>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
 function EvidenceCard({ evidence }: { evidence: Evidence }) {
   const url = safeSourceUrl(evidence.location);
   return (
@@ -175,7 +193,11 @@ export function Inspector({
             {node?.label ??
               `${source?.label ?? edge?.source} ${edge?.direction === 'forward' ? '→' : '—'} ${target?.label ?? edge?.target}`}
           </h3>
-          {item.description ? <p className="description">{item.description}</p> : null}
+          {node && node.type !== 'property' ? (
+            <Definition description={node.description} />
+          ) : item.description ? (
+            <p className="description">{item.description}</p>
+          ) : null}
           {edge ? (
             <dl className="relationship-summary">
               <Detail label="Source">

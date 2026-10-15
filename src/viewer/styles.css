@@ -641,6 +641,19 @@ a {
   line-height: 1.65;
   font-size: 12px;
 }
+.entity-definition .description {
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+.entity-definition details {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.entity-definition summary {
+  cursor: pointer;
+}
 dl {
   margin: 0;
 }

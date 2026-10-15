@@ -3,7 +3,10 @@ import { resolve } from 'node:path';
 import { GraphStore } from '../src/core/store';
 import { createService } from '../src/server/service';
 
-const service = await createService({ store: new GraphStore(resolve('knowledge')) });
+const service = await createService({
+  store: new GraphStore(resolve('knowledge')),
+  sourceDirectory: resolve('local-sources'),
+});
 try {
   const vite = await createServer({ server: { host: '127.0.0.1', port: 5173, strictPort: true } });
   await vite.listen();

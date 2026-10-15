@@ -6,6 +6,7 @@ try {
   const service = await createService({
     store: new GraphStore(resolve('knowledge')),
     staticDir: resolve('dist'),
+    sourceDirectory: resolve('local-sources'),
   });
   console.log(`OSDU Schema Explorer: ${service.url}`);
   let closing = false;
